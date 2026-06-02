@@ -1,0 +1,45 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.env
+.venv/
+
+# System files
+.DS_Store
+
+# Data files - DO NOT PUSH LARGE DATASETS
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Large/raw files
+*.zip
+*.csv
+*.xlsx
+*.xls
+*.db
+*.sqlite
+*.sqlite3
+
+# Model/output files
+outputs/figures/*
+outputs/model_results/*
+!outputs/figures/.gitkeep
+!outputs/model_results/.gitkeep
+
+# Saved models
+*.pkl
+*.joblib
+*.h5
+
+# Streamlit secrets
+.streamlit/secrets.toml
