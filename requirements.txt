@@ -9,3 +9,5 @@ sqlalchemy
 pymysql
 xgboost
 jupyter
+python-dotenv
+plotly

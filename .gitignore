@@ -36,6 +36,12 @@ outputs/model_results/*
 !outputs/figures/.gitkeep
 !outputs/model_results/.gitkeep
 
+.env
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+data/raw/
+
 # Saved models
 *.pkl
 *.joblib
