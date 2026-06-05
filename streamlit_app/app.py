@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏥 VitalDB Perioperative Surgical Outcomes Dashboard")
+st.title("VitalDB Perioperative Surgical Outcomes Dashboard")
 
 st.markdown(
     """
@@ -576,12 +576,16 @@ with tab6:
     st.markdown(
         """
         This page uses a simple rules-based risk score to estimate whether a surgical case may be at
-        higher risk for prolonged hospital stay. The score is based on patterns found in the EDA and SQL
-        reporting results, including ASA class, emergency status, operation type, age, BMI, and selected
-        clinical/intraoperative factors.
+        higher risk for prolonged hospital stay. The score is based on the most interpretable non-leakage
+        features from the model results, plus strong patterns found in the EDA and SQL reporting results.
 
         **Important:** This is a project prototype and is not intended for clinical decision-making.
         """
+    )
+
+    st.caption(
+        "This risk score is a rules-based prototype informed by EDA, SQL findings, and model feature importance. "
+        "It is not the trained Random Forest/XGBoost model."
     )
 
     
@@ -596,9 +600,8 @@ with tab6:
         operation_type,
         creatinine,
         hemoglobin,
+        platelet_count,
         estimated_blood_loss,
-        rbc_transfusion,
-        ffp_transfusion,
         crystalloid
     ):
         score = 0
@@ -614,11 +617,11 @@ with tab6:
 
         # BMI
         if bmi >= 30:
-            score += 1
-            reasons.append(("BMI ≥ 30", 1))
+            score += 2
+            reasons.append(("BMI ≥ 30", 2))
         elif bmi < 18.5:
-            score += 1
-            reasons.append(("BMI < 18.5", 1))
+            score += 2
+            reasons.append(("BMI < 18.5", 2))
 
         # ASA class
         if asa_class >= 4:
@@ -653,19 +656,27 @@ with tab6:
 
         # Creatinine
         if creatinine >= 2.0:
-            score += 2
-            reasons.append(("Creatinine ≥ 2.0", 2))
+            score += 3
+            reasons.append(("Creatinine ≥ 2.0", 3))
         elif creatinine >= 1.2:
-            score += 1
-            reasons.append(("Creatinine 1.2–1.99", 1))
+            score += 2
+            reasons.append(("Creatinine 1.2–1.99", 2))
 
         # Hemoglobin
         if hemoglobin < 10:
-            score += 2
-            reasons.append(("Hemoglobin < 10", 2))
+            score += 3
+            reasons.append(("Hemoglobin < 10", 3))
         elif hemoglobin < 12:
-            score += 1
-            reasons.append(("Hemoglobin 10–11.9", 1))
+            score += 2
+            reasons.append(("Hemoglobin 10–11.9", 2))
+
+        # Platelet count
+        if platelet_count < 100:
+            score += 3
+            reasons.append(("Platelet count < 100", 3))
+        elif platelet_count < 150:
+            score += 2
+            reasons.append(("Platelet count 100–149", 2))
 
         # Estimated blood loss
         if estimated_blood_loss >= 1000:
@@ -674,15 +685,6 @@ with tab6:
         elif estimated_blood_loss >= 500:
             score += 1
             reasons.append(("Estimated blood loss 500–999", 1))
-
-        # Transfusions
-        if rbc_transfusion > 0:
-            score += 2
-            reasons.append(("RBC transfusion used", 2))
-
-        if ffp_transfusion > 0:
-            score += 2
-            reasons.append(("FFP transfusion used", 2))
 
         # Crystalloid
         if crystalloid >= 4000:
@@ -693,15 +695,15 @@ with tab6:
             reasons.append(("Crystalloid 2000–3999", 1))
 
         # Risk category
-        if score <= 3:
+        if score <= 4:
             category = "Low Risk"
             estimated_range = "Lower than average"
             interpretation = "This case has relatively few risk factors for prolonged hospital stay."
-        elif score <= 7:
+        elif score <= 9:
             category = "Moderate Risk"
             estimated_range = "Around average to moderately elevated"
             interpretation = "This case has some risk factors associated with longer recovery."
-        elif score <= 11:
+        elif score <= 14:
             category = "High Risk"
             estimated_range = "Elevated"
             interpretation = "This case has multiple risk factors associated with prolonged hospital stay."
@@ -716,7 +718,56 @@ with tab6:
     # User inputs
     
 
+       # User inputs
+    
+
     st.subheader("Patient and Surgical Inputs")
+    with st.expander("What do these risk factors mean?"):
+            st.markdown(
+            """
+            **Age**  
+            Patient age at the time of surgery. Older age may be associated with slower recovery or more complications.  
+            **In this prototype, age 60+ begins adding risk points.**
+
+            **BMI**  
+            Body Mass Index, based on height and weight. Very high or very low BMI may indicate higher surgical risk.  
+            **General adult range:** BMI 18.5–24.9 is usually considered a healthy/normal range; 25–29.9 is overweight; 30+ is obese. 
+
+            **ASA Class**  
+            A preoperative physical status score used by anesthesia teams. Higher ASA class generally means the patient is sicker before surgery.  
+            **General context:** ASA 1 means a healthy patient; ASA 2 means mild systemic disease; ASA 3+ indicates more serious disease burden.
+
+            **Emergency Operation Status**  
+            Whether the surgery was an emergency or non-emergency case. Emergency cases had higher prolonged hospital stay rates in our SQL analysis.  
+            **General context:** Non-emergency is lower risk in this prototype; emergency status adds risk points.
+
+            **Operation Type**  
+            The broad surgery category, such as colorectal, transplantation, stomach, hepatic, or thyroid. Different operation types had different recovery patterns.  
+            **General context:** In our dataset, transplantation, “Others,” stomach, hepatic, and vascular cases had higher prolonged-stay patterns.
+
+            **Preoperative Creatinine**  
+            A blood marker related to kidney function. Higher creatinine can suggest worse kidney function, which may increase recovery risk.  
+            **Approximate adult reference range:** Around 0.7–1.2 mg/dL for men and 0.5–1.0 mg/dL for women, though this varies by lab, age, sex, and muscle mass.
+
+            **Preoperative Hemoglobin**  
+            A blood marker related to oxygen-carrying capacity. Lower hemoglobin can suggest anemia or reduced blood reserve before surgery.  
+            **Approximate adult reference range:** Around 13.5–17.5 g/dL for men and 12.0–15.5 g/dL for women, though ranges vary by lab.
+
+            **Preoperative Platelet Count**  
+            Platelets help blood clot. A low platelet count may suggest higher bleeding risk or worse overall condition before surgery.  
+            **Approximate adult reference range:** Around 150–450 thousand platelets per microliter of blood.
+
+            **Estimated Blood Loss**  
+            The estimated amount of blood lost during surgery. Higher blood loss can indicate a more complex or stressful operation.  
+            **In this prototype, 500+ adds some risk and 1000+ adds more risk.**
+
+            **Intraoperative Crystalloid**  
+            IV fluid given during surgery. Higher fluid volume can reflect longer or more complex intraoperative management.  
+            **In this prototype, 2000+ adds some risk and 4000+ adds more risk.**
+            """
+        )
+
+    col1, col2, col3 = st.columns(3)
 
     col1, col2, col3 = st.columns(3)
 
@@ -738,7 +789,7 @@ with tab6:
         )
 
         creatinine = st.number_input(
-            "Preoperative Creatinine",
+            "Preoperative Creatinine (mg/dL)",
             min_value=0.0,
             max_value=10.0,
             value=0.9,
@@ -747,15 +798,23 @@ with tab6:
 
     with col3:
         hemoglobin = st.number_input(
-            "Preoperative Hemoglobin",
+            "Preoperative Hemoglobin (g/dL)",
             min_value=0.0,
             max_value=25.0,
             value=13.0,
             step=0.1
         )
 
+        platelet_count = st.number_input(
+            "Preoperative Platelet Count (10³/µL)",
+            min_value=0.0,
+            max_value=1000.0,
+            value=250.0,
+            step=10.0
+        )
+
         estimated_blood_loss = st.number_input(
-            "Estimated Blood Loss",
+            "Estimated Blood Loss (mL)",
             min_value=0.0,
             max_value=10000.0,
             value=200.0,
@@ -763,27 +822,11 @@ with tab6:
         )
 
         crystalloid = st.number_input(
-            "Intraoperative Crystalloid",
+            "Intraoperative Crystalloid (mL)",
             min_value=0.0,
             max_value=20000.0,
             value=1000.0,
             step=100.0
-        )
-
-    col4, col5 = st.columns(2)
-
-    with col4:
-        rbc_transfusion = st.selectbox(
-            "RBC Transfusion Used?",
-            options=[0, 1],
-            format_func=lambda x: "No" if x == 0 else "Yes"
-        )
-
-    with col5:
-        ffp_transfusion = st.selectbox(
-            "FFP Transfusion Used?",
-            options=[0, 1],
-            format_func=lambda x: "No" if x == 0 else "Yes"
         )
 
     
@@ -798,9 +841,8 @@ with tab6:
         operation_type=operation_type,
         creatinine=creatinine,
         hemoglobin=hemoglobin,
+        platelet_count=platelet_count,
         estimated_blood_loss=estimated_blood_loss,
-        rbc_transfusion=rbc_transfusion,
-        ffp_transfusion=ffp_transfusion,
         crystalloid=crystalloid
     )
 
@@ -824,19 +866,12 @@ with tab6:
         reasons_df = pd.DataFrame(reasons, columns=["Risk Factor", "Points Added"])
         st.dataframe(reasons_df, use_container_width=True)
 
-        fig_reasons = px.bar(
-            reasons_df,
-            x="Points Added",
-            y="Risk Factor",
-            orientation="h",
-            title="Risk Score Contributions",
-            labels={
-                "Points Added": "Points",
-                "Risk Factor": "Risk Factor"
-            }
+        reasons_chart = reasons_df.set_index("Risk Factor")
+
+        st.bar_chart(
+            reasons_chart,
+            y="Points Added"
         )
-        fig_reasons.update_layout(yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_reasons, use_container_width=True)
     else:
         st.success("No additional risk points were added based on the selected inputs.")
 
@@ -893,21 +928,14 @@ with tab6:
 
     st.dataframe(comparison_df, use_container_width=True)
 
-    fig_compare = px.bar(
-        comparison_df,
-        x="Group",
-        y="Prolonged Stay Rate (%)",
-        title="Selected Risk Factors Compared to Dataset Baseline",
-        hover_data={
-            "Case Count": True,
-            "Prolonged Stay Rate (%)": ":.2f"
-        }
+    comparison_chart = comparison_df.set_index("Group")
+
+    st.bar_chart(
+        comparison_chart,
+        y="Prolonged Stay Rate (%)"
     )
 
-    fig_compare.update_xaxes(tickangle=20)
-    st.plotly_chart(fig_compare, use_container_width=True)
-
     st.caption(
-        "The risk score is a simplified educational prototype based on observed dataset patterns. "
-        "It is not a validated clinical risk calculator."
+        "The risk score is a simplified educational prototype based on observed dataset patterns, "
+        "non-leakage model feature importance, and SQL outcome summaries. It is not a validated clinical risk calculator."
     )
